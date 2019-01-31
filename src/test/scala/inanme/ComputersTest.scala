@@ -1,18 +1,27 @@
 package inanme
 
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+
+import io.gatling.commons.validation.Validation
 import io.gatling.core.Predef._
-import io.gatling.core.session._
+import io.gatling.core.session.{Session, _}
 import io.gatling.http.Predef._
-import io.gatling.core.structure.PopulationBuilder
+import io.gatling.core.structure._
 import io.gatling.http.protocol.HttpProtocolBuilder
-import scala.concurrent.duration.{Duration, FiniteDuration, _}
+import io.gatling.http.response.Response
+
+import scala.concurrent.duration._
 
 trait Scenario {
   def populationBuilder: PopulationBuilder
+
   def protocolBuilder: Option[HttpProtocolBuilder]
 }
-case class GetComputers(testDuration: FiniteDuration, userRampDuration: FiniteDuration, userCount: Int) extends Scenario {
+
+case class GetComputers(testDuration: FiniteDuration,
+                        userRampDuration: FiniteDuration,
+                        userCount: Int)
+  extends Scenario {
   val populationBuilder: PopulationBuilder =
     scenario("Get page")
       .during(testDuration) {
@@ -23,12 +32,12 @@ case class GetComputers(testDuration: FiniteDuration, userRampDuration: FiniteDu
               .check(status.in(200))
           }
       }
-      .inject(rampUsers(userCount) over userRampDuration)
-  val protocolBuilder = Some(http
-    .baseURL("http://computer-database.gatling.io")
-    .disableCaching
-    .shareConnections)
+      .inject(rampUsers(userCount) during userRampDuration)
+  val scnProtocolBuilder: HttpProtocolBuilder = http
+    .baseUrl("http://computer-database.gatling.io").disableCaching.shareConnections
+  val protocolBuilder = Some(scnProtocolBuilder)
 }
+
 case class PrintEveryQuarter(duration: FiniteDuration) extends Scenario {
   val populationBuilder: PopulationBuilder =
     scenario("Print every quarter")
@@ -49,14 +58,28 @@ case class PrintEveryQuarter(duration: FiniteDuration) extends Scenario {
     session
   }
 }
-class AppResilienceSimulation extends Simulation {
-  val testDuration = 10 seconds
-  val userRampDuration = 2 seconds
 
-  //
-  def scenarios: List[Scenario] = List[Scenario](GetComputers(testDuration, userRampDuration, 6), PrintEveryQuarter(testDuration))
+class ComputersTest extends Simulation {
+  val testDuration = (11 * 60) seconds
+  val userRampDuration = (3 * 60) seconds
+  val nrUsers = 10
+
+  def scenarios: List[Scenario] = List[Scenario](
+    GetComputers(testDuration, userRampDuration, nrUsers),
+    PrintEveryQuarter(testDuration)
+  )
+
+
+  def log(counter: AtomicLong)(session: Session, response: Response): Validation[Response] = {
+    val host = response.request.getUri.getHost
+    val status = response.status
+    val responseTime = response.endTimestamp - response.startTimestamp
+    logger.warn(s">>>>>>>>>${counter.getAndIncrement()}:$host:$status:$responseTime")
+    response
+  }
 
   setUp(scenarios.map(_.populationBuilder))
-    .protocols(scenarios.flatMap(_.protocolBuilder).map(_.extraInfoExtractor(record(new AtomicInteger())).protocol))
+    .protocols(scenarios.flatMap(_.protocolBuilder).map(_.transformResponse(log(new AtomicLong())).protocol)
+    )
 
 }
