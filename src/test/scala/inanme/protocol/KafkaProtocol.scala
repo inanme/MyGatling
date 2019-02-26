@@ -23,8 +23,7 @@ object KafkaProtocol {
 
     override def defaultProtocolValue(configuration: GatlingConfiguration): KafkaProtocol = apply(configuration)
 
-    override def newComponents(coreComponents: CoreComponents): KafkaProtocol => KafkaComponents =
-      kafkaProtocol => KafkaComponents(kafkaProtocol)
+    override def newComponents(coreComponents: CoreComponents): KafkaProtocol => KafkaComponents = KafkaComponents
 
   }
 }
@@ -45,7 +44,7 @@ case class KafkaComponents(kafkaProtocol: KafkaProtocol) extends ProtocolCompone
 object KafkaProtocolBuilder {
   implicit def toKafkaProtocol(builder: KafkaProtocolBuilder): KafkaProtocol = builder.build
 
-  def apply(configuration: GatlingConfiguration): KafkaProtocolBuilder =
+  def apply(implicit configuration: GatlingConfiguration): KafkaProtocolBuilder =
     KafkaProtocolBuilder(KafkaProtocol(configuration))
 }
 
