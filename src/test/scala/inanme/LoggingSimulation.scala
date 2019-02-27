@@ -16,13 +16,13 @@ class LoggingSimulation extends Simulation {
 
   val p1: PopulationBuilder =
     scenario("Logging Simulation")
-      .feed(logFeed)
-      .during(10 minutes) {
-        pace(1000 milliseconds)
+      .during(1 minutes) {
+        pace(400 millis, 600 millis)
+          .feed(logFeed)
           .exec {
             LoggingActionBuilder
           }
-      }.inject(rampUsers(10) during (3 minutes))
+      }.inject(atOnceUsers(1))
 
   val p2: PopulationBuilder =
     scenario("Logging Simulation")
@@ -40,5 +40,5 @@ class LoggingSimulation extends Simulation {
         }
       }.inject(atOnceUsers(1))
 
-  setUp(p3).protocols(Seq.empty[Protocol])
+  setUp(p1).protocols(Seq.empty[Protocol])
 }

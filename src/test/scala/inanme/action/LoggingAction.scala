@@ -17,23 +17,27 @@ object LoggingActionBuilder extends ActionBuilder {
 
 class LoggingAction(override val statsEngine: StatsEngine,
                     override val next: Action,
-                    override val clock: Clock = new DefaultClock
-                   ) extends ExitableAction with NameGen {
+                    override val clock: Clock = new DefaultClock) extends ExitableAction with NameGen {
 
   override val name: String = genName("LoggingRequest")
 
   override def execute(session: Session): Unit = recover(session) {
     val log = session("log").as[String]
+    val requestStartDate = clock.nowMillis
     println(s">>>>>>>>>>>>$log")
+    //TimeUnit.MILLISECONDS.sleep(scala.util.Random.nextInt(1300))
+    val requestEndDate = clock.nowMillis
+
     statsEngine.logResponse(
       session,
       "log",
-      startTimestamp = System.currentTimeMillis(),
-      endTimestamp = System.currentTimeMillis(),
+      startTimestamp = requestStartDate,
+      endTimestamp = requestEndDate,
       OK,
       None,
       None
     )
+    next ! session
   }
 
 }
