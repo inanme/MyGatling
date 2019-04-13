@@ -21,7 +21,7 @@ class PaceSimulation extends Simulation {
       }
       .inject(atOnceUsers(1))
 
-  val _1Message_1User: PopulationBuilder =
+  val _1GET_1User: PopulationBuilder =
     scenario("Get page")
       .exec {
         http("get computers")
@@ -30,7 +30,7 @@ class PaceSimulation extends Simulation {
       }
       .inject(atOnceUsers(1))
 
-  val _1Message_10Users: PopulationBuilder =
+  val _10GETs_10Users: PopulationBuilder =
     scenario("Get page")
       .exec {
         http("get computers")
@@ -39,8 +39,24 @@ class PaceSimulation extends Simulation {
       }
       .inject(atOnceUsers(10))
 
+  val _10Users: PopulationBuilder =
+    scenario("Get page")
+      .during(1 minute) {
+        pace(180 milliseconds, 220 milliseconds)
+          .exec {
+            http("get computers")
+              .get("/computers")
+              .check(status.in(200))
+          }
+      }.inject(rampUsers(10) during (10 seconds))
+
+  val _10TPS = _10Users.throttle(
+    reachRps(10) in (0 seconds),
+    holdFor(1 minute),
+  )
+
   val protocol: HttpProtocol = http
     .baseUrl("http://computer-database.gatling.io").disableCaching.shareConnections.build
 
-  setUp(_1Message_10Users).protocols(protocol)
+  setUp(_10TPS).protocols(protocol)
 }
