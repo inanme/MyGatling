@@ -22,11 +22,19 @@ class BugSimulation extends Simulation {
     scenario("Get page")
       .repeat(10) {
         exec {
-          http("get computers")
+          http("request1")
             .get("/computers")
             .check(status.in(200))
             .check(substring("surely does not exists").find(1))
             .transformResponse(log)
+        }.exec {
+          http("request2")
+            .get("/computers")
+            .check(status.in(200))
+            .check(substring("surely does not exists").find(1))
+            .transformResponse(log)
+        }.exec { session =>
+          session.markAsSucceeded
         }
       }
       .inject(atOnceUsers(1))
